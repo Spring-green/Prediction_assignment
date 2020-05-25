@@ -61,18 +61,7 @@ testing<- trainc[-inTrain,]
 dim(training);dim(testing)
 
 ```
-```{r high_corr, include=FALSE}
-M<- abs(cor(training[,-53]))
-diag(M)<-0
-which(M>0.8, arr.ind = T)
-CorName<- findCorrelation(M,cutoff = 0.8, names = FALSE)
-names(training)[CorName]
-########################################################################
-#preProc<- preProcess(log10(training[,-53]+1),method = "pca",pcaComp=13)
-#trainPC<- predict(preProc,log10(training[,-53]+1))
-#modelFit<-train(training$classe~., mehod="glm", data=trainPC)
-########################################################################
-```
+
 ## Building Model
 To predict the outcome, we used the following methods:
 1. Classification tree
@@ -88,16 +77,12 @@ Building a model with classification tree algorithm, we've found an accuracy of 
 modFit1<- train(classe ~ ., method="rpart",data=training)
 print(modFit1$finalModel)
 print(modFit1)
-#plot(modFit1$finalModel, uniform =TRUE, main = "Classification Tree")
-#text(modFit1$finalModel, use.n=TRUE, all=TRUE, cex = .8)
 fancyRpartPlot(modFit1$finalModel)
  
 # Validating the model: Accuracy
 predict1<- predict(modFit1,newdata=testing)
 conf1<- confusionMatrix(testing$classe,predict1)
 conf1
-#conf1$table
-#conf1$overall[1]
 ```
 
 ## 2. Random forest
