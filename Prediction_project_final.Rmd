@@ -1,0 +1,115 @@
+---
+title: "PMLProject"
+author: "BY"
+date: "22/05/2020"
+output:
+  html_document: default
+  'html_document: default': default
+---
+
+```{r setup}
+library(caret)
+library(gbm)
+library(randomForest)
+library(rpart)
+library(e1071)
+library(rattle)
+```
+
+## Project
+It is now possible to collect a large amount of data about personal activity relatively inexpensively Using devices such as Jawbone Up, Nike FuelBand, and Fitbit. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+The goal of this project is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise. The participants were asked to perform barbell lifts correctly and incorrectly in 5 different ways. The process of building the model, using cross validation, the expected out of sample error, the reasons for the selecting choices are explained in this report.
+
+More information is available from the website here: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting  Dataset).
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
+
+```{r download_data}
+traind<- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"), header = TRUE)
+testd<- read.csv(url("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"), header = TRUE)
+dim(traind);dim(testd)
+
+```
+## Preparing data
+Train dataset includes 19,622 entries and 160 columns. For modeling purpose, the first thing we are going to do is treating missing and outliers values to improve the accuracy of the models. After removing NAs, 93 columns remained. There are also some variables which have no predictve power which were removed. Also variables with no or very little variability in them were removed using nearzerovar function. Finally, there are 53 variables left.
+
+```{r Preparing_data,include=FALSE}
+traind1<- traind[,colSums(is.na(traind))==0]
+traind2<- traind1[,-c(1:7)]
+nzv<- nearZeroVar(traind2)
+trainc<- traind2[,-nzv]
+dim(trainc)
+
+testd1<- testd[,colSums(is.na(testd))==0]
+testd2<- testd1[,-c(1:7)]
+testc<- testd2
+dim(testc)
+```
+
+## Creating train and test data for prediction
+
+```{r datapartition, echo=FALSE}
+set.seed(3618)
+inTrain<- createDataPartition(trainc$classe,
+                              p=0.7, list=FALSE)
+training<-trainc[inTrain,]
+testing<- trainc[-inTrain,] 
+dim(training);dim(testing)
+
+```
+
+## Building Model
+To predict the outcome, we used 3 methods of Classification tree, Random forest, and boosting.The models were evaluated using cross-validation technique.
+
+## 1. Classification tree
+Building a model with classification tree algorithm, we've found an accuracy of about 50% with Out of sample error of 0.5%. 
+
+```{r Model_Tree, echo=FALSE}
+fitControl<- trainControl(method="cv", number=5, verboseIter = FALSE)
+modFit1<- train(classe ~ ., method="rpart",data=training,trControl = fitControl)
+print(modFit1$finalModel)
+print(modFit1)
+fancyRpartPlot(modFit1$finalModel)
+ 
+# Validating the model: Accuracy
+predict1<- predict(modFit1,newdata=testing)
+conf1<- confusionMatrix(testing$classe,predict1)
+conf1
+```
+
+## 2. Random forest
+Building a model with random forest algorithm, we've found an accuracy of about 99.3% with Out of sample error of 0.01. 
+
+```{r Model_RandomForest, echo=FALSE}
+fitControl<- trainControl(method="cv", number=5, verboseIter = FALSE)
+modFit2<- train(classe ~ ., method="rf", data=training, trControl = fitControl)
+print(modFit2$finalModel)
+print(modFit2)
+# Validating the model : Accuracy
+predict2<- predict(modFit2,newdata=testing)
+conf2<- confusionMatrix(testing$classe,predict2)
+conf2
+```
+## 3. Gradient Boosting
+Building a model with gradient boosting algorithm, we've found an accuracy of about 96.4% with 0.04 Out of sample error. 
+
+```{r Model_gbm, echo=FALSE}
+fitControl<- trainControl(method="cv", number=5, verboseIter = FALSE)
+modFit3<- train(classe ~ ., method="gbm", data=training, trControl = fitControl, verbose = FALSE)
+print(modFit3$finalModel)
+print(modFit3)
+# Validating the model : Accuracy
+predict3<- predict(modFit3,newdata=testing)
+conf3<- confusionMatrix(testing$classe,predict3)
+conf3
+```
+## Final model
+We selected Random Forest model for prediction as it has the highest accuracy among all models.
+
+We then applied the model to test data.
+
+```{r model_valid, echo=FALSE}
+predTest<- predict(modFit2, newdata = testc)
+predTest
+```
